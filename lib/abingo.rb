@@ -3,6 +3,8 @@
 
 #Usage of ABingo, including practical hints, is covered at http://www.bingocardcreator.com/abingo
 
+require 'logger'
+
 class Abingo
 
   @@VERSION = "1.0.0"
@@ -186,8 +188,14 @@ class Abingo
   end
 
   def self.find_alternative_for_user(test_name, alternatives)
+    logger = Logger.new('abtest.log')
+    logger.info "find alternative"
+    logger.info "test name: #{test_name}"
+    logger.info alternatives
     alternatives_array = retrieve_alternatives(test_name, alternatives)
-    alternatives_array[self.modulo_choice(test_name, alternatives_array.size)]
+    val = alternatives_array[self.modulo_choice(test_name, alternatives_array.size)]
+    logger.info val
+    return val
   end
 
   #Quickly determines what alternative to show a given user.  Given a test name
