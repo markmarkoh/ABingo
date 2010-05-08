@@ -3,8 +3,6 @@
 
 #Usage of ABingo, including practical hints, is covered at http://www.bingocardcreator.com/abingo
 
-require 'logger'
-
 class Abingo
 
   @@VERSION = "1.0.0"
@@ -55,11 +53,13 @@ class Abingo
 
   #A simple convenience method for doing an A/B test.  Returns true or false.
   #If you pass it a block, it will bind the choice to the variable given to the block.
-  def self.flip(test_name)
+  #edit by press9 on May 7 2010: We need to pass options, not a huge fan of this hack but it should
+  #be side-effect free.
+  def self.flip(test_name, options)
     if block_given?
-      yield(self.test(test_name, [true, false]))
+      yield(self.test(test_name, [true, false], options))
     else
-      self.test(test_name, [true, false])
+      self.test(test_name, [true, false], options)
     end
   end
 
@@ -89,6 +89,18 @@ class Abingo
         Abingo.cache.write("Abingo::participating_tests::#{Abingo.identity}", participating_tests)
       end
       Abingo::Alternative.score_participation(test_name)
+      #Here we add press 9 code
+      if options[:press9_tracking]
+          #We want the index of the chosen alternative so we can reduce the choice
+          #down to a meaningful 0 or 1 ( Treatment or Control, respectively )
+          if alternatives.count == 2 #no multivariate
+              #flip the array index so users can declare arrays in
+              #ab_test as [control, treatment], which I think is more convienient
+              treatment = alternatives.index(choice) ^ 1
+              test_token = options[:press9_tracking][:test_token]
+              Abingo::Press9.score_participation(test_token, treatment, Abingo.identity)
+          end
+      end
     end
 
     if block_given?
@@ -128,16 +140,16 @@ class Abingo
         if tests_listening_to_conversion
           if tests_listening_to_conversion.size > 1
             tests_listening_to_conversion.map do |individual_test|
-              self.score_conversion!(individual_test.to_s)
+              self.score_conversion!(individual_test.to_s, options)
             end
           elsif tests_listening_to_conversion.size == 1
             test_name_str = tests_listening_to_conversion.first.to_s
-            self.score_conversion!(test_name_str)
+            self.score_conversion!(test_name_str, options)
           end
         else
           #No tests listening for this conversion.  Assume it is just a test name.
           test_name_str = name.to_s
-          self.score_conversion!(test_name_str)
+          self.score_conversion!(test_name_str, options)
         end
       end
     end
@@ -188,14 +200,8 @@ class Abingo
   end
 
   def self.find_alternative_for_user(test_name, alternatives)
-    logger = Logger.new('abtest.log')
-    logger.info "find alternative"
-    logger.info "test name: #{test_name}"
-    logger.info alternatives
     alternatives_array = retrieve_alternatives(test_name, alternatives)
-    val = alternatives_array[self.modulo_choice(test_name, alternatives_array.size)]
-    logger.info val
-    return val
+    alternatives_array[self.modulo_choice(test_name, alternatives_array.size)]
   end
 
   #Quickly determines what alternative to show a given user.  Given a test name
@@ -205,13 +211,26 @@ class Abingo
     Digest::MD5.hexdigest(Abingo.salt.to_s + test_name + self.identity.to_s).to_i(16) % choices_count
   end
 
-  def self.score_conversion!(test_name)
+  def self.score_conversion!(test_name, options={})
     test_name.gsub!(" ", "_")
     participating_tests = Abingo.cache.read("Abingo::participating_tests::#{Abingo.identity}") || []
     if options[:assume_participation] || participating_tests.include?(test_name)
       cache_key = "Abingo::conversions(#{Abingo.identity},#{test_name}"
       if options[:multiple_conversions] || !Abingo.cache.read(cache_key)
         Abingo::Alternative.score_conversion(test_name)
+        if options[:press9_tracking]
+            alternatives = Abingo::Experiment.alternatives_for_test(test_name)
+            viewed_alternative = Abingo.find_alternative_for_user(test_name, alternatives)
+            #reduce viewed alternative to a 1 or 0 (control or treatment)
+            if viewed_alternative == true or viewed_alternative == false
+                treatment = viewed_alternative ? 1 : 0
+            else
+                treatment = alternatives.index(viewed_alternative) ^ 1
+            end
+            Abingo::Press9.score_conversion(options[:press9_tracking][:test_token], 
+                treatment, options[:press9_tracking][:group_token], 
+                Abingo.identity, options[:press9_tracking][:properties])
+        end
         if Abingo.cache.exist?(cache_key)
           Abingo.cache.increment(cache_key)
         else

@@ -6,7 +6,7 @@ module AbingoViewHelper
     if (Abingo.options[:enable_specification] && !params[test_name].blank?)
       choice = params[test_name]
     elsif (alternatives.nil?)
-      choice = Abingo.flip(test_name)
+      choice = Abingo.flip(test_name, options)
     else
       choice = Abingo.test(test_name, alternatives, options)
     end
@@ -22,7 +22,7 @@ module AbingoViewHelper
     if (Abingo.options[:enable_specification] && !params[test_name].blank?)
       choice = params[test_name]
     elsif (alternatives.nil?)
-      choice = Abingo.flip(test_name)
+      choice = Abingo.flip(test_name, options)
     else
       choice = Abingo.test(test_name, alternatives, options)
     end
