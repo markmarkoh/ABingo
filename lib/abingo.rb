@@ -93,7 +93,7 @@ class Abingo
       if options[:press9_tracking]
           #We want the index of the chosen alternative so we can reduce the choice
           #down to a meaningful 0 or 1 ( Treatment or Control, respectively )
-          if alternatives.count == 2 #no multivariate
+          if alternatives.length == 2 #no multivariate
               #flip the array index so users can declare arrays in
               #ab_test as [control, treatment], which I think is more convienient
               treatment = alternatives.index(choice) ^ 1
