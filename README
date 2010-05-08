@@ -59,6 +59,20 @@ Abingo::Experiment.last.describe_result_in_words
     random chance.  However, this doesn't say anything about how much the first alternative is really
     likely to be better by."
 
+Example: Tracking with Press 9
+Same as above, just make sure the 3rd parameter to ab_test includes :press9_tracking
+In press 9, create a new test (select Custom Javascript), skip through to the Guide page and write down
+the test token an group token
+
+@result = ab_test("testing_images", ["control.jpg", "treatment.jpg"] , :press9_tracking => {:test_token => "3CXbb"})
+or
+@result = ab_test("testing_images", nil, :press9_tracking => {:test_token => "3CXbb"})
+
+#properties are optional
+
+bingo!("testing_images", :press9_tracking => {:group_token => 'TB35Z8pH', :test_token => "3CXbb", 
+:properties => {:money => 99.9, :type => "yellow"} })
+
 Installation
 =======
 
